@@ -1,61 +1,96 @@
 import express from 'express'
 import dotenv from 'dotenv'
-import cors from 'cors'
-import multer from 'multer'
-import {nanoid} from 'nanoid'
-import sharp from 'sharp'
-import fs from 'fs'
-
 dotenv.config({
-    path:'server/.env'
+    path: 'server/.env'
 })
 
+
+import socket from 'socket.io'
+import {createServer} from 'http'
+import cors from 'cors'
+import sharp from 'sharp'
+import fs from 'fs'
 import '../server/core/db'
+import {passport} from './core/passport';
+import AuthController from "./Controllers/AuthController";
+import RoomsController from "./Controllers/RoomsController";
+import {uploader} from "./core/uploader";
+import {getUsersFromRoom, SocketRoom} from "../utils/getUsersFromRoom";
 
-import { passport } from './core/passport';
+import Sequelize from "sequelize";
+const sequelize = require('./core/db').sequelize;
 
-const app=express()
+const Room = require('../models/room')(sequelize, Sequelize.DataTypes,
+    Sequelize.Model);
 
-const uploader=multer({
-    storage:multer.diskStorage({
-        destination:function (_, __, cb) {
-            cb(null,'public/avatars')
-        },
-        filename:function (_,file,cb){
-            cb(null,file.fieldname + '-'+nanoid(6) + "."+ file.mimetype.split('/').pop())
-        }
-    })
+const app = express()
+const server=createServer(app)
+
+const io=socket(server,{
+    cors:{
+        origin:"*"
+    }
 })
 
 app.use(cors());
+app.use(express.json())
 app.use(passport.initialize());
 
-app.post('/upload', uploader.single('photo'),(req,res)=>{
-    const filePath=req.file.path
+app.get('/rooms',passport.authenticate('jwt',{session:false}),RoomsController.index)
+app.post('/rooms',passport.authenticate('jwt',{session:false}),RoomsController.create)
+app.get('/rooms/:id',passport.authenticate('jwt',{session:false}),RoomsController.show)
+app.delete('/rooms/:id',passport.authenticate('jwt',{session:false}),RoomsController.delete)
+
+app.get('/auth/me',passport.authenticate('jwt',{session:false}),AuthController.getMe)
+app.post('/auth/sms/activate', passport.authenticate('jwt', { session: false }),AuthController.activate)
+app.get('/auth/sms',passport.authenticate('jwt', { session: false }), AuthController.sendSMS)
+app.get('/auth/github', passport.authenticate('github'));
+app.get('/auth/github/callback', passport.authenticate('github', {failureRedirect: '/login'}),AuthController.authCallback);
+
+app.post('/upload', uploader.single('photo'), (req, res) => {
+    const filePath = req.file.path
     sharp(filePath)
-        .resize(150,150)
+        .resize(150, 150)
         .toFormat('jpeg')
-        .toFile(filePath.replace('.png','.jpeg'),(err)=>{
-        if (err){
-            throw err;
-        }
-        fs.unlinkSync(filePath)
-        res.json({
-            url:`avatars/${req.file.filename.replace('.png','.jpeg')}`
+        .toFile(filePath.replace('.png', '.jpeg'), (err) => {
+            if (err) {
+                throw err;
+            }
+            fs.unlinkSync(filePath)
+            res.json({
+                url: `avatars/${req.file.filename.replace('.png', '.jpeg')}`
+            })
         })
-    })
 })
 
-app.get('/auth/github',
-    passport.authenticate('github'));
+const rooms:SocketRoom={}
 
-app.get('/auth/github/callback',
-    passport.authenticate('github', { failureRedirect: '/login' }),
-    (req, res)=> {
-        res.send(`<script>window.opener.postMessage('${JSON.stringify(req.user,)}',"*");window.close()</script>`)
-    });
+io.on('connection', (socket) => {
+    console.log('К СОКЕТАМ ПОДКЛЮЧИЛИСЬ!!!',socket.id);
 
+    socket.on('CLIENT@ROOMS:JOIN',({user,roomId})=>{
 
+        socket.join(`room/${roomId}`)
+        rooms[socket.id]={roomId,user}
+        const speakers=getUsersFromRoom(rooms,roomId)
+        io.emit('SERVER@ROOMS:HOME',{roomId:Number(roomId),speakers})
+        io.in(`room/${roomId}`).emit('SERVER@ROOMS:JOIN',speakers)
+        Room.update({speakers},{where:{id:roomId}})
 
+    })
 
-app.listen(3001,()=>console.log('SERVER RUNNED!'))
+    socket.on('disconnect',()=>{
+        if (rooms[socket.id]){
+
+            const {roomId,user}=rooms[socket.id]
+            socket.broadcast.to(`room/${roomId}`).emit('SERVER@ROOMS:LEAVE',user)
+            delete rooms[socket.id]
+            const speakers=getUsersFromRoom(rooms,roomId)
+            io.emit('SERVER@ROOMS:HOME',{roomId:Number(roomId),speakers})
+            Room.update({speakers},{where:{id:roomId}})
+        }
+    })
+
+});
+
+server.listen(3001, () => console.log('SERVER RUNNED!'))

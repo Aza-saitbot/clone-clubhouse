@@ -7,8 +7,7 @@ import { StepInfo } from '../../StepInfo';
 
 import styles from './EnterPhoneStep.module.scss';
 import {MainContext} from "../../../pages";
-// import { MainContext } from '../../../../archakov/clubhouse-clone/pages';
-// import { Axios } from '../../../../archakov/clubhouse-clone/core/axios';
+import {Axios} from "../../../core/axios";
 
 type InputValueState = {
   formattedValue: string;
@@ -17,7 +16,7 @@ type InputValueState = {
 
 export const EnterPhoneStep = () => {
 
-   const { onNextStep } = React.useContext(MainContext);
+   const { onNextStep,setFieldValue } = React.useContext(MainContext);
   const [isLoading, setIsLoading] = React.useState(false);
   const [values, setValues] = React.useState<InputValueState>({}as InputValueState);
 
@@ -26,8 +25,8 @@ export const EnterPhoneStep = () => {
   const onSubmit = async () => {
     try {
       setIsLoading(true);
-      // await Axios.get(`/auth/sms?phone=${values.value}`);
-      // setFieldValue('phone', values.value);
+      await Axios.get(`/auth/sms?phone=${values.value}`);
+      setFieldValue('phone', values.value);
       onNextStep();
     } catch (error) {
       console.warn('Ошибка при отправке СМС', error);

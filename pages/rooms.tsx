@@ -20,8 +20,11 @@ const RoomsPage: NextPage = () => {
   const dispatch = useDispatch();
   const socket = useSocket();
 
+  console.log('rooms2222',rooms)
+
   React.useEffect(() => {
     socket.on('SERVER@ROOMS:HOME', ({ roomId, speakers }) => {
+      console.log('roomId, speakers',roomId, speakers)
       dispatch(setRoomSpeakers({ speakers, roomId }));
     });
   }, []);
@@ -42,7 +45,7 @@ const RoomsPage: NextPage = () => {
         </div>
         {visibleModal && <StartRoomModal onClose={() => setVisibleModal(false)} />}
         <div className="grid mt-30">
-          {rooms.map((obj) => (
+          {rooms?.map((obj) => (
             <Link key={obj.id} href={`/rooms/${obj.id}`}>
               <a className="d-flex">
                 <ConversationCard
@@ -75,7 +78,9 @@ export const getServerSideProps: GetServerSideProps = wrapper.getServerSideProps
 
     const rooms = await Api(ctx).getRooms();
 
-    ctx.store.dispatch(setRooms(rooms));
+    if (Array.isArray(rooms)){
+      ctx.store.dispatch(setRooms(rooms));
+    }
 
     return {
       props: {},

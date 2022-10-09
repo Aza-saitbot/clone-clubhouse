@@ -1,12 +1,12 @@
-import {NextPage} from 'next';
-import {useRouter} from 'next/router';
+import { GetServerSideProps, NextPage } from 'next';
+import { useRouter } from 'next/router';
 import React from 'react';
-import {UserData} from '..';
-import {Api} from '../../api';
-import {Header} from '../../components/Header';
-import {Profile} from '../../components/Profile';
-import {wrapper} from '../../redux/store';
-import {checkAuth} from '../../utils/checkAuth';
+import { UserData } from '..';
+import { Api } from '../../api';
+import { Header } from '../../components/Header';
+import { Profile } from '../../components/Profile';
+import { wrapper } from '../../redux/store';
+import { checkAuth } from '../../utils/checkAuth';
 
 interface ProfilePageProps {
   profileData: UserData | null;

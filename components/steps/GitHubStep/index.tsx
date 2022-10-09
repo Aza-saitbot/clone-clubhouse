@@ -1,12 +1,12 @@
+import React from 'react';
+import styles from './GitHubStep.module.scss';
 import clsx from 'clsx';
 import Cookies from 'js-cookie';
 import { WhiteBlock } from '../../WhiteBlock';
 import { Button } from '../../Button';
 import { StepInfo } from '../../StepInfo';
-
-import styles from './GitHubStep.module.scss';
-import React from 'react';
 import {MainContext, UserData} from "../../../pages";
+
 
 export const GitHubStep: React.FC = () => {
    const { onNextStep,setUserData } = React.useContext(MainContext);
@@ -21,14 +21,17 @@ export const GitHubStep: React.FC = () => {
 
   React.useEffect(() => {
     window.addEventListener('message', ({ data, origin }) => {
-      console.log('data',data)
+
       const user: string = data;
+        console.log('window.addEventListener message data',user)
       if (typeof user === 'string' && user.includes('avatarUrl')) {
-        Cookies.remove('token');
-         const json: UserData = JSON.parse(user);
-         setUserData(json);
-         onNextStep();
-         Cookies.set('token', json.token);
+          Cookies.remove('token');
+          const json: UserData =JSON.parse(user)
+          setUserData(json);
+          onNextStep();
+          Cookies.set('token', json.token);;
+
+
       }
     });
   }, []);

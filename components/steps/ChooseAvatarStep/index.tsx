@@ -28,7 +28,7 @@ const uploadFile = async (file: File): Promise<{ url: string }> => {
 
 export const ChooseAvatarStep: React.FC = () => {
    const { onNextStep, setFieldValue,userData} = React.useContext(MainContext);
-
+const avatarLetters=userData.fullname.split(' ').map(i=>i[0]).join('')
    const [avatarUrl, setAvatarUrl] = React.useState<string>(userData.avatarUrl);
   const inputFileRef = React.useRef<HTMLInputElement>(null);
 
@@ -64,7 +64,7 @@ export const ChooseAvatarStep: React.FC = () => {
         <div className={styles.avatar}>
           <Avatar width="120px" height="120px"
                     src={avatarUrl}
-              // letters={avatarLetters}
+              letters={avatarLetters}
           />
         </div>
         <div className="mb-30">

@@ -49,13 +49,13 @@ const getUserData = (): UserData | null => {
 
 const getFormStep = (): number => {
   const json = getUserData();
-  // if (json) {
-  //   if (json.phone) {
-  //     return 5;
-  //   } else {
-  //     return 4;
-  //   }
-  // }
+  if (json) {
+    if (json.phone) {
+      return 5;
+    } else {
+      return 4;
+    }
+  }
   return 0;
 };
 

@@ -6,6 +6,8 @@ import {WhiteBlock} from "../../WhiteBlock";
 import {MainContext} from "../../../pages";
 
 
+
+
 export const WelcomeStep:FC = () => {
   const { onNextStep } = React.useContext(MainContext);
 
