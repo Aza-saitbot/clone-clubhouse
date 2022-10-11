@@ -47,16 +47,19 @@ const getUserData = (): UserData | null => {
   }
 };
 
+// функция что бы после обновлении страниц, не попадать на 1 шаг,
+// если мы уже прошли авторизацию (есть данные), то хотим узнать
+// если ввели телефон переходит на шаг с кодами, иначе шаг ввода телефона
 const getFormStep = (): number => {
-  const json = getUserData();
-  if (json) {
-    if (json.phone) {
-      return 5;
-    } else {
-      return 4;
+    const json = getUserData();
+    if (json) {
+      if (json.phone) {
+        return 5;
+      } else {
+        return 4;
+      }
     }
-  }
-  return 0;
+    return 0;
 };
 
 export default function Home() {
@@ -76,6 +79,8 @@ export default function Home() {
   };
 
   React.useEffect(() => {
+    // если window не undefined,то я браузер (выполни)
+    // иначе ты находишься на node
     if (typeof window !== 'undefined') {
       const json = getUserData();
       if (json) {
@@ -88,6 +93,7 @@ export default function Home() {
   React.useEffect(() => {
     if (userData) {
       window.localStorage.setItem('userData', JSON.stringify(userData));
+      // что бы после обновлении страницы, всегда прикручивал в наш заголовок токен
       Axios.defaults.headers.Authorization = 'Bearer ' + userData.token;
     }
   }, [userData]);
@@ -101,8 +107,10 @@ export default function Home() {
 
 export const getServerSideProps = wrapper.getServerSideProps(async (ctx) => {
   try {
+    // главная страница, отправь запрос на авторизацию
     const user = await checkAuth(ctx);
 
+    // если, пользователь есть, то перекин в /rooms, ему нужно авторизоваться
     if (user) {
       return {
         props: {},

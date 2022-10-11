@@ -32,14 +32,18 @@ class AuthController {
         const whereQuery = {code, user_id: userId};
 
         try {
+            // если код введен, то мы его находим в бд
             const findCode = await Code.findOne({
                 where: whereQuery,
             });
 
             if (findCode) {
+                //если нашли, то удаляем/означает что пользователя активировали
                 await Code.destroy({
                     where: whereQuery,
                 });
+
+                // обновляем пользователя, что мы его активировали
                 await User.update({...user, isActive: 1}, {where: {id: userId}});
                 return res.send();
             } else {
@@ -62,7 +66,6 @@ class AuthController {
         // const smsCode = generateRandomCode()
         const smsCode = 1234
 
-        console.log('user', req.user)
 
         if (!phone) {
             return res.status(400).send({

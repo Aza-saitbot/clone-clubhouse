@@ -13,6 +13,7 @@ class RoomsController {
 
     async index(req: express.Request, res: express.Response) {
         try {
+            // get all rooms
             const items = await Room.findAll()
             res.json(items)
 
@@ -30,7 +31,9 @@ class RoomsController {
                 res.status(400).json({message:"Отсутсвует заголовок или тип комнаты"})
             }
 
+            // create room
             const room = await Room.create(data)
+            // return on client obj = room
             res.status(201).json(room)
 
         } catch (e) {
@@ -40,7 +43,6 @@ class RoomsController {
     async show(req: express.Request, res: express.Response) {
         try {
             const roomId=req.params.id
-            console.log('roomId',isNaN(Number(roomId)))
 
             if (isNaN(Number(roomId))){
                 res.status(404).json({message: 'Не верный айди комнаты'})

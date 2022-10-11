@@ -3,8 +3,6 @@ import dotenv from 'dotenv'
 dotenv.config({
     path: 'server/.env'
 })
-
-
 import socket from 'socket.io'
 import {createServer} from 'http'
 import cors from 'cors'
