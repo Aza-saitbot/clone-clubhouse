@@ -64,8 +64,10 @@ const RoomsPage: NextPage = () => {
 
 export const getServerSideProps: GetServerSideProps = wrapper.getServerSideProps(async (ctx) => {
   try {
+    // авторизован или нет?
     const user = await checkAuth(ctx);
 
+    // если не авторизован, то перекинь на главную страницу
     if (!user) {
       return {
         props: {},
@@ -76,8 +78,11 @@ export const getServerSideProps: GetServerSideProps = wrapper.getServerSideProps
       };
     }
 
+    // если авторизован, запрашиваю спсиок комнат
+    // на этой этапе, еще рендера /rooms
     const rooms = await Api(ctx).getRooms();
 
+    // если список массив и не пустой, то установи в хранилище
     if (Array.isArray(rooms)){
       ctx.store.dispatch(setRooms(rooms));
     }

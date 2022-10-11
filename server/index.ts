@@ -34,6 +34,8 @@ app.use(cors());
 app.use(express.json())
 app.use(passport.initialize());
 
+
+// подключаем middleware, к-й проверяет авторизован или нет/дать доступ к методу или нет
 app.get('/rooms',passport.authenticate('jwt',{session:false}),RoomsController.index)
 app.post('/rooms',passport.authenticate('jwt',{session:false}),RoomsController.create)
 app.get('/rooms/:id',passport.authenticate('jwt',{session:false}),RoomsController.show)

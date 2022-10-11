@@ -44,6 +44,7 @@ class RoomsController {
         try {
             const roomId=req.params.id
 
+                // если ты не число, то верни ошибку
             if (isNaN(Number(roomId))){
                 res.status(404).json({message: 'Не верный айди комнаты'})
             }

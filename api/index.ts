@@ -24,5 +24,8 @@ export const Api = (ctx: any): ApiReturnType => {
 
   // передаю в аргументах instance (уже с прикрученным токеном в headers и baseUrl)
   // и используй в своих фунциях
+  // reduce: ...prev берет предыдщие значение: {},
+  // ...f(instance) возвращает результат функции (по очереди),
+  // склеивает с предыдущим в исходный объект и этот объект передаем в Api
   return [UserApi, RoomApi].reduce((prev, f) => ({ ...prev, ...f(instance) }), {} as ApiReturnType);
 };
