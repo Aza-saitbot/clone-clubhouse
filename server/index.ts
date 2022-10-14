@@ -63,17 +63,23 @@ app.post('/upload', uploader.single('photo'), (req, res) => {
         })
 })
 
+
 const rooms:SocketRoom={}
 
 io.on('connection', (socket) => {
-    console.log('К СОКЕТАМ ПОДКЛЮЧИЛИСЬ!!!',socket.id);
 
+    // запрос-ответ
+    // клиент отправил команду, подключи юзера в комнату
     socket.on('CLIENT@ROOMS:JOIN',({user,roomId})=>{
 
+        // подкючаем юзера, делаем уникальное название комнаты/ пути
         socket.join(`room/${roomId}`)
+        // как мы зашли в команту, положи в объект ключ = сокет айди, а значение его будет данные юзера и номер комнаты
         rooms[socket.id]={roomId,user}
         const speakers=getUsersFromRoom(rooms,roomId)
+        // все остальные пользователи двнной комнату узнают, что user зашел в эту комнату и передаю user
         io.emit('SERVER@ROOMS:HOME',{roomId:Number(roomId),speakers})
+        // сервер отвечает, в какую комнату отправляею с данным событием/ держи юзера, он подключен в комнату
         io.in(`room/${roomId}`).emit('SERVER@ROOMS:JOIN',speakers)
         Room.update({speakers},{where:{id:roomId}})
 
@@ -81,9 +87,11 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect',()=>{
         if (rooms[socket.id]){
-
+            // когда хотим выйти из комнаты, вытаскиваем из объекта номер комнаты и данные юезра
             const {roomId,user}=rooms[socket.id]
+            // и отправляем всем кто находится в этой комнате, данные юзера с событием что мы вышли
             socket.broadcast.to(`room/${roomId}`).emit('SERVER@ROOMS:LEAVE',user)
+            // затем удаляем юзера
             delete rooms[socket.id]
             const speakers=getUsersFromRoom(rooms,roomId)
             io.emit('SERVER@ROOMS:HOME',{roomId:Number(roomId),speakers})
@@ -92,5 +100,6 @@ io.on('connection', (socket) => {
     })
 
 });
+
 
 server.listen(3001, () => console.log('SERVER RUNNED!'))

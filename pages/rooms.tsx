@@ -20,7 +20,7 @@ const RoomsPage: NextPage = () => {
   const dispatch = useDispatch();
   const socket = useSocket();
 
-  console.log('rooms2222',rooms)
+ // console.log('rooms2222',rooms)
 
   React.useEffect(() => {
     socket.on('SERVER@ROOMS:HOME', ({ roomId, speakers }) => {

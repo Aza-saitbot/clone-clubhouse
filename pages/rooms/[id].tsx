@@ -41,7 +41,7 @@ export const getServerSideProps = wrapper.getServerSideProps(async (ctx) => {
       },
     };
   } catch (error) {
-    console.log('ERROR!');
+    // если ошибка, то верни к спискам комнат
     return {
       props: {},
       redirect: {
