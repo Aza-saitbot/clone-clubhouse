@@ -36,8 +36,10 @@ export const roomsSlice = createSlice({
     },
     setRoomSpeakers: (
       state,
+        // ссылка на тип по ключу Room['speakers'] и номер комнаты
       action: PayloadAction<{ speakers: Room['speakers']; roomId: number }>,
     ) => {
+      // возвращаем только тех юзеров, к-е сейчас в комнате
       state.items = state.items.map((room) => {
         if (room.id === action.payload.roomId) {
           room.speakers = action.payload.speakers;

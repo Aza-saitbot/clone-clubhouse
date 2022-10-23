@@ -6,13 +6,10 @@ type BackButtonProps = {
   href: string;
 };
 
-export const BackButton: React.FC<BackButtonProps> = ({ title, href }) => {
-  return (
+export const BackButton: React.FC<BackButtonProps> = ({ title, href }) =>
     <Link href={href}>
-      <div className="d-flex mb-30 cup">
-        <img src="/static/back-arrow.svg" alt="Back" className="mr-10" />
-        <h3>{title}</h3>
-      </div>
+        <div className="d-flex mb-30 cup">
+            <img src="/static/back-arrow.svg" alt="Back" className="mr-10" />
+            <h3>{title}</h3>
+        </div>
     </Link>
-  );
-};

@@ -7,6 +7,7 @@ import { wrapper } from '../../redux/store';
 import { checkAuth } from '../../utils/checkAuth';
 
 export default function RoomPage({ room }) {
+
   return (
     <>
       <Header />

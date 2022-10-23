@@ -79,20 +79,41 @@ io.on('connection', (socket) => {
         const speakers=getUsersFromRoom(rooms,roomId)
         // все остальные пользователи двнной комнату узнают, что user зашел в эту комнату и передаю user
         io.emit('SERVER@ROOMS:HOME',{roomId:Number(roomId),speakers})
-        // сервер отвечает, в какую комнату отправляею с данным событием/ держи юзера, он подключен в комнату
+        // сервер отвечает, отпрваляю всем в этой комнате кроме меня/ держи юзера, он подключен в комнату
         io.in(`room/${roomId}`).emit('SERVER@ROOMS:JOIN',speakers)
         Room.update({speakers},{where:{id:roomId}})
 
     })
 
+// ожидаем сигнал от пользователя
+    socket.on('CLIENT@ROOMS:CALL',({user,roomId,signal})=>{
+        // всех остальных мы оповещаем, о сигнале пользователя
+        socket.broadcast.to(`room/${roomId}`).emit('SERVER@ROOMS:CALL',{
+            user,
+            signal
+        })
+    })
+
+    // я тебе звоню - ответь мне тоже
+    socket.on('CLIENT@ROOMS:ANSWER',({targetUserId,roomId,signal})=>{
+        // всех остальных мы оповещаем, о сигнале пользователя
+
+        socket.broadcast.to(`room/${roomId}`).emit('SERVER@ROOMS:ANSWER',{
+            targetUserId,
+            signal
+        })
+    })
+
     socket.on('disconnect',()=>{
         if (rooms[socket.id]){
-            // когда хотим выйти из комнаты, вытаскиваем из объекта номер комнаты и данные юезра
+            // когда хотим выйти из комнаты, вытаскиваем из объекта номер комнаты и данные пользователя
             const {roomId,user}=rooms[socket.id]
+
             // и отправляем всем кто находится в этой комнате, данные юзера с событием что мы вышли
             socket.broadcast.to(`room/${roomId}`).emit('SERVER@ROOMS:LEAVE',user)
             // затем удаляем юзера
             delete rooms[socket.id]
+            //когда уходит юзер из комнаты, возвращаем новый список/обновленный список юезров в комнате
             const speakers=getUsersFromRoom(rooms,roomId)
             io.emit('SERVER@ROOMS:HOME',{roomId:Number(roomId),speakers})
             Room.update({speakers},{where:{id:roomId}})

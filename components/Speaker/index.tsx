@@ -3,7 +3,7 @@ import React from 'react';
 import { Avatar } from '../Avatar';
 
 export type SpeakerProps = {
-  id: string;
+  id: number;
   fullname: string;
   avatarUrl: string;
 };
