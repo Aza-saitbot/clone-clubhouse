@@ -59,6 +59,26 @@ class AuthController {
         }
     }
 
+    async getUserInfo(req: express.Request, res: express.Response) {
+        const userId = req.params.id;
+
+        try {
+            const findUser = await User.findByPk(userId);
+            if (findUser) {
+                res.json( await findUser);
+            } else {
+                res.status(500).json({
+                    message: 'Пользователь не найден',
+                });
+            }
+        } catch (error) {
+            console.log(error);
+            res.status(500).json({
+                message: 'Ошибка при активации аккаунта',
+            });
+        }
+    }
+
     async sendSMS(req: express.Request, res: express.Response) {
 
         const phone = req.query.phone

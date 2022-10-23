@@ -29,6 +29,7 @@ export const Room: React.FC<RoomProps> = ({title}) => {
         // при монтировании компонента, проверяем мы в браузере?
         if (typeof window !== 'undefined') {
 
+            // получаем доступ к микрофону
             // сначало мы создаем медиа поток, только потом создаем соединения и передаем поток
             navigator.mediaDevices
                 .getUserMedia({
@@ -36,100 +37,149 @@ export const Room: React.FC<RoomProps> = ({title}) => {
                 })
                 .then((stream) => {
 
-                    // создаю соединения инциатор
-                    const peerIncome = new Peer({
-                        initiator: true,
-                        trickle: false,
-                        stream
-                    })
-
-                    // когда я сделал соединения исходящее, то я должен получить свой сигнал (инфо, к-й передает ICE сервер)
-                    // мы запрашиваем у ICE сервера, мы можем сделать peer 2 peer соединения? еслли да, то сервер возвращает
-                    // данные, к-е позволяет сделать peer 2 peer соединения
-                    peerIncome.on('signal', (signal) => {
-                        console.log('SIGNAL', signal)
-                        // всех остальных пользователей, кроме меня мы оповещаем об этом
-                        socket.emit('CLIENT@ROOMS:CALL', {
-                            user,
-                            roomId,
-                            signal
-                        });
-                    })
-
-                    // остальные пользователи ловит эту событию
-                    socket.on('SERVER@ROOMS:CALL', ({user:callerUser, signal}) => {
-                        console.log('СИГНАЛ ПРИШЕЛ ОТ СЕРВЕРА = ', callerUser, signal)
-
-                        // создаю слушателя соединения
-                        const peerOutcome = new Peer({
-                            initiator: false,
-                            trickle: false,
-                            stream
-                        })
-
-                        // когда с другой стороны ответили
-                        peerOutcome.signal(signal)
-
-                        peerOutcome.on('stream', stream => {
-                            console.log('stream', stream)
-                            document.querySelector('audio').srcObject = stream
-                            document.querySelector('audio').play()
-                        })
-                            // наш сигнал выполнится
-                            .on('signal', (signal) => {
-                            // кто (callerUser) мне отправил сигнал, тому (callerUser) я отправляю свою сигнал - ответом
-                            socket.emit('CLIENT@ROOMS:ANSWER', {
-                                targetUserId: callerUser.id,
-                                roomId,
-                                signal
-                            })
-                        })
-                    })
-
                     // подключаемся в эту комнату
                     socket.emit('CLIENT@ROOMS:JOIN', {
                         user,
                         roomId,
                     });
 
-                    // следим за комнатой, если кто то зашел?, то сохраняем список пользователей
+                    //из сервака придет ответ, что кто-то подключился
                     socket.on('SERVER@ROOMS:JOIN', (allUsers: UserData[]) => {
                         console.log('allUsers', allUsers);
-
+                        // список пользователей обновляется
                         setUsers(allUsers);
 
+                        allUsers.forEach((speaker) => {
+
+                            ///
+                            /// 1. если мы звоним
+                            ///
+
+                            // если это не я и
+                            // если в массиве peers, нет такого пользователя, к-й сейчас подключается (
+                            // т.е. говорим если подключается 3-й пользователь, то проверь если такой пользователь в массиве,
+                            // если нет, то создай новое new Peer соединения и добавь в массив peers, его айди и его данные для подключения peer2peer)
+                            if (user.id !== speaker.id && !peers.find((obj) => obj.id !== speaker.id)) {
+
+                                // создаю соединения инициатор, берем медиа поток
+                                const peerIncome = new Peer({
+                                    //  initiator: true - инициатор звонка
+                                    initiator: true,
+                                    trickle: false,
+                                    stream,
+                                });
+
+                                // Получили сигнал от ICE-сервера и просим всех участников позвонить мне
+                                peerIncome.on('signal', (signal) => {
+                                    console.log('1. СИГНАЛ СОЗДАН: ', signal, 'далее');
+                                    console.log('ПРОСИМ ЮЗЕРА ' + speaker.fullname + ' НАМ ПОЗВОНИТЬ');
+                                    // говорим конкретному пользователю (targetUserId) позвонить мне (callerUserId)
+                                    // звоним - targetUserId
+                                    // кто должен звонить, это я - callerUserId
+                                    socket.emit('CLIENT@ROOMS:CALL', {
+                                        targetUserId: speaker.id,
+                                        callerUserId: user.id,
+                                        // звоним к этой комнате
+                                        roomId,
+                                        // signal/данные для p2p - передаем мой, инициатора звонка
+                                        signal,
+                                    });
+                                    // и каждое соединения с кем я хочу созвониться
+                                    // сохраняем в массив
+                                    // c speaker.id этим пользователям, я создал отдельное соединения (peerIncome)
+                                    // массив инициаторов соединений
+                                    peers.push({
+                                        peer: peerIncome,
+                                        id: speaker.id,
+                                    });
+                                });
 
 
+                                ///
+                                /// 2. если нам звонят
+                                ///
+                                socket.on(
+                                    'SERVER@ROOMS:CALL',
+                                    // мы узнаем: кому звонят (targetUserId) и кто звонит (callerUserId)
+                                    // и сигнал кто нам звонит (callerSignal)
+                                    ({targetUserId, callerUserId, signal: callerSignal}) => {
+                                        console.log('2. ЮЗЕР ' + callerUserId + ' ПОДКЛЮЧИЛСЯ, ЗВОНИМ!');
+
+                                        // создаем слушателя, к-й будет поступать звук того, кто решил нам позвонить
+                                        // дальше код получателя
+                                        const peerOutcome = new Peer({
+                                            // initiator: false - слушатель
+                                            initiator: false,
+                                            trickle: false,
+                                            stream,
+                                        });
+
+                                        // Звоним пользователю
+                                        // и ждём сигнал, который нам необходимо передать обратно юзеру на ответ
+                                        peerOutcome.signal(callerSignal);
+
+                                        peerOutcome
+                                            // Получаем сигнал от ICE-сервера и отправляем его юзеру, чтобы он получил наш сигнал для соединения
+                                            .on('signal', (outSignal) => {
+                                                console.log(
+                                                    '3. ПОЛУЧИЛИ СИГНАЛ НАШ, ОТПРАВЛЯЕМ В ОТВЕТ ЮЗЕРУ ' + callerUserId,
+                                                );
+                                                // теперь ты мне должен ответить или позвонить мне
+                                                socket.emit('CLIENT@ROOMS:ANSWER', {
+                                                    // твой айди (callerUserId) является целью, к-й должен ответить мне - позвони мне
+                                                    targetUserId: callerUserId,
+                                                    // тот кто звонить, то я (targetUserId)
+                                                    callerUserId: targetUserId, // (user.id)
+                                                    roomId,
+                                                    // отправляем сигнал слушателя, отправляем тому, кто должен мне ответить/позвонить
+                                                    signal: outSignal,
+                                                });
+                                            })
+                                            // Когда нам ответили, воспроизводим звук
+                                            .on('stream', (stream) => {
+                                                document.querySelector('audio').srcObject = stream;
+                                                document.querySelector('audio').play();
+                                            });
+                                    },
+                                );
 
 
-                        // сервак прислал сигнал другого пользователя
+                                ///
+                                /// 3. если просят кому-то позвонить/ответить
+                                ///
 
-
-                      // сервак говорит, вот эти пользователи хотят созвониться, неизвестные
-                      socket.on('SERVER@ROOMS:ANSWER',({ targetUserId, signal})=>{
-                        // тот кто хочет созвониться прислал targetUserId, если айди с нашим совпадает то,
-                        if (user.id === targetUserId){
-                          // peerIncome.signal(signal)
-                            console.log('СОЗВОНИТСЬЯ ХОЧУ С АЙДИ',targetUserId)
-                        }
-                      })
-
+                                // узнаем: кто звонит/просит ответить (callerUserId) и берет его сигнал
+                                socket.on('SERVER@ROOMS:ANSWER', ({callerUserId, signal}) => {
+                                    // найди того пользователя, с кем я хотел созвониться
+                                    // и если он есть в массиве peers (инициаторов соединений)
+                                    const obj = peers.find((obj) => Number(obj.id) === Number(callerUserId));
+                                    if (obj) {
+                                        // то позвони/ответь ему
+                                        obj.peer.signal(signal);
+                                    }
+                                    console.log('4. МЫ ОТВЕТИЛИ ЮЗЕРУ', callerUserId);
+                                });
+                            }
+                        });
 
                     });
 
-                    // следим за списком комнаты, если кто то вышел, то обноваляем список
+
+                    // когда пользователь вышел из комнаты, фильтрую массив/ обновляю список
                     socket.on('SERVER@ROOMS:LEAVE', (leaveUser: UserData) => {
                         console.log('LEAVE = leaveUser', leaveUser)
-                        setUsers((prev) => prev.filter((prevUser) => prevUser.id !== leaveUser.id));
-
                         setUsers((prev) =>
-                          prev.filter((prevUser) => {
-                            const peerUser = peers.find((obj) => Number(obj.id) === Number(leaveUser.id));
-                            if (peerUser) {
-                              peerUser.peer.destroy();
-                            }
-                            return prevUser.id !== leaveUser.id;
-                          }),
+                            prev.filter((prevUser) => {
+
+                                //находим peer соединения, к-й хочет выйти
+                                const peerUser = peers.find((obj) => Number(obj.id) === Number(leaveUser.id));
+                                if (peerUser) {
+                                    // и разрываем соединения
+                                    peerUser.peer.destroy();
+                                }
+                                // обновляем список, без пользователя к-й вышел
+                                return prevUser.id !== leaveUser.id;
+                            }),
                         );
                     });
 
@@ -177,73 +227,3 @@ export const Room: React.FC<RoomProps> = ({title}) => {
     );
 };
 
-// allUsers.forEach((speaker) => {
-//   if (user.id !== speaker.id && !peers.find((obj) => obj.id !== speaker.id)) {
-//     const peerIncome = new Peer({
-//       initiator: true,
-//       trickle: false,
-//       stream,
-//     });
-//
-//     // Получили сигнал от ICE-сервера и просим всех участников позвонить мне
-//     peerIncome.on('signal', (signal) => {
-//       console.log(signal, 222);
-//       console.log(
-//         '1. СИГНАЛ СОЗДАН. ПРОСИМ ЮЗЕРА ' + speaker.fullname + ' НАМ ПОЗВОНИТЬ',
-//       );
-//       socket.emit('CLIENT@ROOMS:CALL', {
-//         targetUserId: speaker.id,
-//         callerUserId: user.id,
-//         roomId,
-//         signal,
-//       });
-//       peers.push({
-//         peer: peerIncome,
-//         id: speaker.id,
-//       });
-//     });
-//
-//     socket.on(
-//       'SERVER@ROOMS:CALL',
-//       ({ targetUserId, callerUserId, signal: callerSignal }) => {
-//         console.log('2. ЮЗЕР ' + callerUserId + ' ПОДКЛЮЧИЛСЯ, ЗВОНИМ!');
-//
-//         const peerOutcome = new Peer({
-//           initiator: false,
-//           trickle: false,
-//           stream,
-//         });
-//
-//         // Звоним человеку м ждём сигнал, который нам необходимо передать обратно юзеру на ответ
-//         peerOutcome.signal(callerSignal);
-//
-//         peerOutcome
-//           // Получаем сигнал от ICE-сервера и отправляем его юзеру, чтобы он получил наш сигнал для соединения
-//           .on('signal', (outSignal) => {
-//             console.log(
-//               '3. ПОЛУЧИЛИ СИГНАЛ НАШ, ОТПРАВЛЯЕМ В ОТВЕТ ЮЗЕРУ ' + callerUserId,
-//             );
-//             socket.emit('CLIENT@ROOMS:ANSWER', {
-//               targetUserId: callerUserId,
-//               callerUserId: targetUserId,
-//               roomId,
-//               signal: outSignal,
-//             });
-//           })
-//           // Когда нам ответили, воспроизводим звук
-//           .on('stream', (stream) => {
-//             document.querySelector('audio').srcObject = stream;
-//             document.querySelector('audio').play();
-//           });
-//       },
-//     );
-//
-//     socket.on('SERVER@ROOMS:ANSWER', ({ callerUserId, signal }) => {
-//       const obj = peers.find((obj) => Number(obj.id) === Number(callerUserId));
-//       if (obj) {
-//         obj.peer.signal(signal);
-//       }
-//       console.log('4. МЫ ОТВЕТИЛИ ЮЗЕРУ', callerUserId);
-//     });
-//   }
-// });

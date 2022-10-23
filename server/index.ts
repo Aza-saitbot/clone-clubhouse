@@ -24,6 +24,7 @@ const Room = require('../models/room')(sequelize, Sequelize.DataTypes,
 const app = express()
 const server=createServer(app)
 
+// @ts-ignore
 const io=socket(server,{
     cors:{
         origin:"*"
@@ -41,6 +42,7 @@ app.post('/rooms',passport.authenticate('jwt',{session:false}),RoomsController.c
 app.get('/rooms/:id',passport.authenticate('jwt',{session:false}),RoomsController.show)
 app.delete('/rooms/:id',passport.authenticate('jwt',{session:false}),RoomsController.delete)
 
+app.get('/user/:id',passport.authenticate('jwt',{session:false}),AuthController.getUserInfo)
 app.get('/auth/me',passport.authenticate('jwt',{session:false}),AuthController.getMe)
 app.post('/auth/sms/activate', passport.authenticate('jwt', { session: false }),AuthController.activate)
 app.get('/auth/sms',passport.authenticate('jwt', { session: false }), AuthController.sendSMS)
@@ -85,21 +87,28 @@ io.on('connection', (socket) => {
 
     })
 
-// ожидаем сигнал от пользователя
-    socket.on('CLIENT@ROOMS:CALL',({user,roomId,signal})=>{
-        // всех остальных мы оповещаем, о сигнале пользователя
+// тут я звоню
+    socket.on('CLIENT@ROOMS:CALL',({targetUserId,callerUserId,roomId,signal})=>{
+
+        // targetUserId - тот кому я звною, цель
+        // callerUserId - тот кто звонит
+        // передаю всем пользователям, к-е есть в этой комнате
+        // все пользователи в этой комнате, узнают что два человека хотят созвонится (targetUserId и callerUserId)
+        // и на фронтеде они определяются, делают созвон друг с другом
         socket.broadcast.to(`room/${roomId}`).emit('SERVER@ROOMS:CALL',{
-            user,
+            targetUserId,
+            callerUserId,
             signal
         })
     })
 
-    // я тебе звоню - ответь мне тоже
-    socket.on('CLIENT@ROOMS:ANSWER',({targetUserId,roomId,signal})=>{
-        // всех остальных мы оповещаем, о сигнале пользователя
+    // тут я отвечаю
+    socket.on('CLIENT@ROOMS:ANSWER',({targetUserId,callerUserId,roomId,signal})=>{
 
+        // всех остальных мы оповещаем, о сигнале пользователя
         socket.broadcast.to(`room/${roomId}`).emit('SERVER@ROOMS:ANSWER',{
             targetUserId,
+            callerUserId,
             signal
         })
     })

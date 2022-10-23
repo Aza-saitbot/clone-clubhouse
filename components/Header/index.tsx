@@ -19,7 +19,7 @@ export const Header: React.FC = () => {
             <h4>Clubhouse</h4>
           </div>
         </Link>
-        <Link href="/profile/1">
+        <Link href={`/profile/${userData?.id}`}>
           <div className="d-flex align-items-center cup">
             <b className="mr-15">{userData?.fullname}</b>
             <Avatar src={userData?.avatarUrl} width="40px" height="40px" />

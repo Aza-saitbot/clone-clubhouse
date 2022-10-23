@@ -22,7 +22,6 @@ const RoomsPage: NextPage = () => {
 
   React.useEffect(() => {
     socket.on('SERVER@ROOMS:HOME', ({ roomId, speakers }) => {
-      console.log('roomId, speakers',roomId, speakers)
       dispatch(setRoomSpeakers({ speakers, roomId }));
     });
   }, []);
